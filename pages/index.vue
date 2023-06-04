@@ -4,11 +4,7 @@
       <div class="flex-auto">SMS Gateway</div>
       <div>
         <svg
-          @click="
-            tabType === 'main' || tabType === 'settings'
-              ? (tabType = 'help')
-              : (tabType = 'main')
-          "
+          @click="switchTab('help')"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -24,15 +20,8 @@
       <div>
         <svg
           @click="
-            tabType === 'main' || tabType === 'help'
-              ? (tabType = 'settings')
-              : (tabType = 'main');
-
-            updateStorage('bundleTimeout', bundleTimeout);
-
-            updateStorage('sendingTimeout', sendingTimeout);
-
-            updateStorage('sendPhoneStatus', sendPhoneStatus);
+            switchTab('settings');
+            updateSettings();
           "
           class="w-6 h-6 cursor-pointer"
           xmlns="http://www.w3.org/2000/svg"
@@ -53,13 +42,6 @@
     </div>
     <div v-show="tabType === 'main'">
       <div class="m-auto p-5 mt-10">
-        <!--<div class="w-full text-center">
-            <button class="border rounded-lg mt-5 py-2 px-10 bg-green-300 shadow-md" @click="startSMSsender">Start SMS sender</button>
-        </div>
-        <div class="w-full text-center">
-            <button class="border rounded-lg mt-5 py-2 px-10 bg-red-300 shadow-md" @click="stopSMSsender">Stop SMS sender</button>
-        </div>-->
-
         <div v-if="!isConnected">
           <div>Webhook URL</div>
           <input
@@ -72,9 +54,9 @@
             spellcheck="false"
             class="w-full border p-1 shadow-md" />
           <div class="text-sm mt-1 mb-4 text-gray-500/75">
-            URL to send events of new received messages and app statuses
+            URL to send events of new received SMS messages and app statuses
           </div>
-          <div>Messages queue URL</div>
+          <div>Messages Queue URL</div>
           <input
             v-model="messagesQueueUrl"
             type="text"
@@ -85,13 +67,8 @@
             spellcheck="false"
             class="w-full border p-1 shadow-md" />
           <div class="text-sm mt-1 mb-2 text-gray-500/75">
-            URL to read queue of messages to be sent
+            URL to fetch messages queue to be sent
           </div>
-          <button
-            class="border rounded-lg mt-5 py-2 px-10 bg-cyan-300 shadow-md"
-            @click="clearStorage">
-            Clear storage
-          </button>
           <div class="w-full text-center">
             <button
               class="border rounded-lg mt-5 py-2 px-10 bg-cyan-300 shadow-md"
@@ -258,9 +235,9 @@
     </div>
     <div v-show="tabType === 'settings'">
       <div class="flex p-2">
-        <div class="mr-2">Bundle Timeout</div>
+        <div class="mr-2">Message Queue Timeout</div>
         <input
-          v-model="bundleTimeout"
+          v-model="messageQueueTimeout"
           class="border rounded-md w-8"
           min="1"
           max="999"
@@ -280,27 +257,20 @@
       <div class="flex p-2">
         <div class="mr-2">Auto-start</div>
         <label class="relative inline-flex items-center cursor-pointer">
-          <input
-            @click="toggleAutostart"
-            type="checkbox"
-            value=""
-            class="sr-only peer" />
-          <div
-            class="w-11 h-6 bg-gray-200 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+          <toggle v-model="autoStart" />
         </label>
       </div>
       <div class="flex p-2">
         <div class="mr-2">Send Phone Status</div>
         <label class="relative inline-flex items-center cursor-pointer">
-          <input
-            v-model="sendPhoneStatus"
-            type="checkbox"
-            value=""
-            class="sr-only peer" />
-          <div
-            class="w-11 h-6 bg-gray-200 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+          <toggle v-model="sendPhoneStatus" />
         </label>
       </div>
+      <button
+        class="border rounded-lg mt-5 py-2 px-10 bg-red-300 shadow-md"
+        @click="clearStorage">
+        Clear storage
+      </button>
     </div>
     <div v-show="tabType === 'help'">this is the help section</div>
   </div>
@@ -311,8 +281,12 @@ import { Preferences } from "@capacitor/preferences";
 import { Device } from "@capacitor/device";
 import moment from "moment";
 import axios from "axios";
+import toggle from "../components/toggle.vue";
 export default {
   name: "IndexPage",
+  components: {
+    toggle,
+  },
   data() {
     return {
       // User input
@@ -321,7 +295,7 @@ export default {
       messagesQueueUrl: "",
 
       // Settings
-      bundleTimeout: 30,
+      messageQueueTimeout: 30,
       sendingTimeout: 2,
       autoStart: false,
       sendPhoneStatus: false,
@@ -332,25 +306,31 @@ export default {
       messagesQueue: [],
       isConnected: false,
       intervalID: 0,
+      deviceID: 0,
 
       // Visual
       logType: "events",
       tabType: "main",
     };
   },
-  /* plans
-  saving url's and settings to localstorage (DONE)
-  write down all statuses (DONE)
-  docs about app or help tab
-  cleaning up everything
-  revamping ui
-  testing and bug fixing
-  */
   computed: {},
-  watch: {},
-  mounted() {
+  watch: {
+    autoStart(newState) {
+      if (newState === true) {
+        cordova.plugins.autoStart.enable();
+        cordova.plugins.backgroundMode.enable();
+      } else {
+        cordova.plugins.autoStart.disable();
+        cordova.plugins.backgroundMode.disable();
+      }
+    },
+  },
+  async mounted() {
+    this.deviceID = await Device.getId();
+
     this.fetchStorage();
-    if (this.autoStart == true) {
+
+    if (this.autoStart === true) {
       this.connect();
       cordova.plugins.backgroundMode.enable();
     }
@@ -371,7 +351,7 @@ export default {
         webhookUrl: "",
         messagesQueueUrl: "",
 
-        bundleTimeout: 30,
+        messageQueueTimeout: 30,
         sendingTimeout: 2,
         autoStart: false,
         sendPhoneStatus: false,
@@ -384,7 +364,7 @@ export default {
 
       // if storage is empty, create a new one.
       // if storage is not empty, load the data from it.
-      if (keys.length == 0) {
+      if (keys.length === 0) {
         for (const [key, value] of Object.entries(storageDataTemplate)) {
           this.updateStorage(key, value);
         }
@@ -392,14 +372,17 @@ export default {
         for await (const [key, value] of Object.entries(storageDataTemplate)) {
           let myval = await Preferences.get({ key });
           this[key] = JSON.parse(myval.value);
-          //this.getStorage(key).then(response => {
-          //self[key] = JSON.parse(response.value);
-          //});
         }
       }
     },
     clearStorage() {
       Preferences.clear();
+    },
+    updateSettings() {
+      this.updateStorage("messageQueueTimeout", this.messageQueueTimeout);
+      this.updateStorage("sendingTimeout", this.sendingTimeout);
+      this.updateStorage("sendPhoneStatus", this.sendPhoneStatus);
+      this.updateStorage("autoStart", this.autoStart);
     },
 
     // SMS receiving
@@ -455,12 +438,11 @@ export default {
       );
     },
     async onSMSArrive(sms) {
-      let deviceid = await Device.getId();
       postRequest(this.webhookUrl, {
         status: "SMS_RECEIVED",
         message: sms.body,
         sender: sms.address,
-        deviceId: deviceid,
+        deviceId: this.deviceID,
       });
       this.throwMessage(
         `New message from ${sms.address}: ${sms.body}`,
@@ -470,7 +452,10 @@ export default {
 
     // SMS sending
     startMessagesQueueSender() {
-      this.intervalID = setInterval(this.getMessageQueue, this.bundleTimeout);
+      this.intervalID = setInterval(
+        this.getMessageQueue,
+        this.messageQueueTimeout
+      );
     },
     stopMessagesQueueSender() {
       clearInterval(this.intervalID);
@@ -520,7 +505,7 @@ export default {
     checkMessageSendingPermission() {
       sms.hasPermission(
         sendingPerms => {
-          if (sendingPerms == true) {
+          if (sendingPerms === true) {
             this.sendMessageQueue();
           } else {
             this.throwLog(
@@ -549,10 +534,12 @@ export default {
             }, delay);
           });
         };
+
         for (const el in this.messagesQueue) {
           await waitforme(this.sendingTimeout * 1000 || 2000);
           this.sendSMS(el.recipient, el.message, el.id || 0);
         }
+
         this.throwStatus("MESSAGE_QUEUE_SENT");
       } else {
         this.throwLog("Messages Queue is empty!", "info");
@@ -564,11 +551,13 @@ export default {
         this.throwStatus("CONNECTION_ALIVE");
       }
 
-      if (messagesQueue.length == 0 && this.messagesQueueUrl !== "") {
+      if (messagesQueue.length === 0 && this.messagesQueueUrl !== "") {
         axios
           .post(
             this.messagesQueueUrl,
-            {},
+            {
+              deviceId: this.deviceID,
+            },
             {
               headers: {
                 "Access-Control-Allow-Origin": "*",
@@ -614,22 +603,23 @@ export default {
         );
         this.throwStatus("CONNECTION_FAILED");
       }
-      /*if (this.url && this.isConnected == false) {
-        this.isConnected = true
-        this.startMessagesQueueSender()
-        this.startIncomingMessagesWatcher()
-        this.throwStatus("CONNECTED")
-        this.throwLog(`Connected to ${this.webhookUrl}`, "info")
+
+      /*if (this.url && this.isConnected === false) {
+        this.isConnected = true;
+        this.startMessagesQueueSender();
+        this.startIncomingMessagesWatcher();
+        this.throwStatus("CONNECTED");
+        this.throwLog(`Connected to ${this.webhookUrl}`, "info");
       }*/
     },
     disconnect() {
-      /*if (this.isConnected == true) {
-        this.isConnected = false
-        this.stopMessagesQueueSender()
-        this.stopIncomingMessagesWatcher()
-        this.throwStatus("DISCONNECTED")
-        this.throwLog(`Disconnected from ${this.webhookUrl}`, "info")
-      }*/
+      if (this.isConnected === true) {
+        this.isConnected = false;
+        this.stopMessagesQueueSender();
+        this.stopIncomingMessagesWatcher();
+        this.throwStatus("DISCONNECTED");
+        this.throwLog(`Disconnected from ${this.webhookUrl}`, "info");
+      }
     },
 
     // system
@@ -676,14 +666,16 @@ export default {
       this.messages.unshift(log);
       this.updateStorage("messages", this.messages);
     },
-    async throwStatus(status, messageID) {
-      let deviceid = await Device.getId();
+    throwStatus(status, messageID) {
       let body = {
         ...(status && { status }),
         ...(messageID && { messageID }),
-        deviceId: deviceid,
+        deviceId: this.deviceID,
       };
-      axios
+
+      this.postRequest(this.webhookUrl, body);
+
+      /*axios
         .post(this.webhookUrl, body, {
           headers: {
             "Access-Control-Allow-Origin": "*",
@@ -699,9 +691,9 @@ export default {
             "error"
           );
           return error;
-        });
+        });*/
     },
-    async postRequest(url, body) {
+    postRequest(url, body) {
       axios
         .post(url, body, {
           headers: {
@@ -730,20 +722,18 @@ export default {
           return "text-red-500";
       }
     },
+    switchTab(tab) {
+      const defaulTab = "main";
+
+      if (this.tabType === tab) {
+        this.tabType = defaulTab;
+      } else {
+        this.tabType = tab;
+      }
+    },
     activeTab(type) {
       if (this.logType === type) return "border-b-4";
       return "";
-    },
-    toggleAutostart() {
-      this.autoStart = !this.autoStart;
-      this.updateStorage("autoStart", this.autoStart);
-      if (this.autoStart === true) {
-        cordova.plugins.autoStart.enable();
-        cordova.plugins.backgroundMode.enable();
-      } else {
-        cordova.plugins.autoStart.disable();
-        cordova.plugins.backgroundMode.disable();
-      }
     },
   },
 };
