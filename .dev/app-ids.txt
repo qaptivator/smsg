@@ -1,0 +1,5 @@
+change the application id in 'android/app/build.gradle' at 'defaultConfig.applicationId' https://capacitorjs.com/docs/v4/android/configuration#changing-the-package-id
+you should also change it in capacitor config, in case of rebuilding
+
+com.flexibia.smsg
+com.france4u.smsg

@@ -88,5 +88,11 @@ sw.*
 
 # Vim swap files
 *.swp
-android
-package-lock.json
+#android
+#package-lock.json
+android/.gradle/
+android/app/build/
+android/.idea/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/
+android/app/google-services.json

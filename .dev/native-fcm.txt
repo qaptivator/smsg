@@ -1,0 +1,14 @@
+to use FCM in your native code, do thiss:
+
+1. insert code in app's build.gradle
+
+ext {
+    firebaseMessagingVersion = project.hasProperty('firebaseMessagingVersion') ? rootProject.ext.firebaseMessagingVersion : '23.0.5'
+}
+
+dependencies {
+    implementation "com.google.firebase:firebase-messaging:$firebaseMessagingVersion"
+}
+
+2. extend FirebaseMessagingService
+
