@@ -1,6 +1,6 @@
 # smsg
 
-<img src="resources/logo.png" style="width: 128px; background-color: white;" alt="Description">
+ <img src="resources/logo-light.png" style="width: 128px;" alt="smsg logo">
 
 _SMS Gateway for API_
 
