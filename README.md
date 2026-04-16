@@ -1,69 +1,68 @@
 # smsg
 
-## Build Setup
+SMS Gateway for API
 
-```bash
-# install dependencies
-$ npm install
+this is an android app to send and recieve sms using an android phone and your backend.
 
-# serve with hot reload at localhost:3000
-$ npm run dev
+if you struggle with **Twillio** or its regional limitations, you can install this app on a phone, let the phone constantly run, and now all SMS are sent from the **sim card** of the phone.
 
-# build for production and launch server
-$ npm run build
-$ npm run start
+**this was made and actively developed back in _2023-2024_, so this is just old code being pushed to github. it is also quite hard remembering every quirk of such old code, so there may be many issues if you actually decide to use this. you can also read the code directly for more direct information**
 
-# generate static project
-$ npm run generate
+# usage
+
+once you install and start the app, you have two urls to put in: webhook url and messages queue url. once any event happens, including system ones and sms, it will send POST requests to the webhook url. for sending messages, it will poll the messages queue url for any messages to send.
+
+## recieve messages
+
+at your server, make a POST route for accepting SMS messages, eg `POST /webhooks/sms`. then, put in the URL of your server and the route into the webhooks field and start the app. when the phone recieves an SMS message, it will send this JSON to the server:
+
+```json
+{
+  "status": "RECEIVED",
+  "deviceId": "your-unique-device-id",
+  "message": "the body of the sms message",
+  "from": "+1234567890",
+  "time": "2024/01/01 12:00:00 PM"
+}
 ```
 
-For detailed explanation on how things work, check out the [documentation](https://nuxtjs.org).
+it may also send other statuses like:
 
-## Special Directories
+- `CONNECTED`: sent when the app successfully registers and starts the gateway.
+- `DISCONNECTED`: sent when the user manually stops the gateway.
+- `CONNECTION_FAILED`: sent if the fcm or network registration fails.
 
-You can create the following extra directories, some of which have special behaviors. Only `pages` is required; you can delete them if you don't want to use their functionality.
+## send messages
 
-### `assets`
+because your device isnt an active server, your backend cant directly connect to it. thats why this app utilizes **polling**, where it requests the server for a `messages` array field with messages to send. here is an example of a response that you can send:
 
-The assets directory contains your uncompiled assets such as Stylus or Sass files, images, or fonts.
+```json
+{
+  "messages": [
+    {
+      "id": "internal-db-id-1",
+      "phoneNumber": "+1234567890",
+      "message": "hello from the backend!"
+    },
+    {
+      "id": "internal-db-id-2",
+      "phoneNumber": "+0987654321",
+      "message": "another queued message"
+    }
+  ]
+}
+```
 
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/assets).
+## configuration
 
-### `components`
+the app has various things which you can tweaj in the settings tab:
 
-The components directory contains your Vue.js components. Components make up the different parts of your page and can be reused and imported into your pages, layouts and even other components.
+## quirks
 
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/components).
+the phone mustnt sleep. the phone can enter weird sleep modes even if the screen is on. i dont remember how exactly i made it work but youll have to figure out yourself how to make it constantly work.
 
-### `layouts`
+**be aware that there could be a lot of unexpected things when running this app. there are no known bugs in the interface and app, but there CAN be underground rocks in the live usage, which i either didnt notice or have forgotten by now**
 
-Layouts are a great help when you want to change the look and feel of your Nuxt app, whether you want to include a sidebar or have distinct layouts for mobile and desktop.
+# license
 
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/layouts).
-
-
-### `pages`
-
-This directory contains your application views and routes. Nuxt will read all the `*.vue` files inside this directory and setup Vue Router automatically.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/get-started/routing).
-
-### `plugins`
-
-The plugins directory contains JavaScript plugins that you want to run before instantiating the root Vue.js Application. This is the place to add Vue plugins and to inject functions or constants. Every time you need to use `Vue.use()`, you should create a file in `plugins/` and add its path to plugins in `nuxt.config.js`.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/plugins).
-
-### `static`
-
-This directory contains your static files. Each file inside this directory is mapped to `/`.
-
-Example: `/static/robots.txt` is mapped as `/robots.txt`.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/static).
-
-### `store`
-
-This directory contains your Vuex store files. Creating a file in this directory automatically activates Vuex.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/store).
+MIT
