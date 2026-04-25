@@ -16,6 +16,20 @@ fun fact: at least 1-2 **real businesses** use this app!
 
 ---
 
+## screenshots
+
+### version 2 (current)
+
+| Events                            | Messages                          | Settings                          |
+| --------------------------------- | --------------------------------- | --------------------------------- |
+| ![](resources/screenshot1_v2.png) | ![](resources/screenshot2_v2.png) | ![](resources/screenshot3_v2.png) |
+
+### version 1 (i didnt find the apk for this, sorry)
+
+| Events                            | Messages                          | Settings                          |
+| --------------------------------- | --------------------------------- | --------------------------------- |
+| ![](resources/screenshot1_v1.png) | ![](resources/screenshot2_v1.png) | ![](resources/screenshot3_v1.png) |
+
 ## features
 
 - bidirectional sms handling: incoming sms messages are forwarded to a custom webhook url and outgoing messages are fetched from a remote queue url.
@@ -95,6 +109,7 @@ you can tweak these in the settings tab:
 - **sim card limits**: be mindful of your carrier's daily sms limits to avoid having your sim card blocked.
 - **underground rocks**: there may be legacy issues or unhandled exceptions in certain android versions. read the logs in the app for debugging, or attach ADB and use devtools like i sometimes did during development.
 - also, no, i will not upload this to google play. i initially thought to do that once i finished developing this, but it's been such a long time that there's no reason to do that anymore. this was very interesting to develop, though, as this project is likely my first real usage of java code, and an android app using capacitorjs.
+- there also used to be an older version, before the revamp in 2024, but i didnt find the apk for it. you may try to build it yourself from the oldest commits in this git repository, but idk.
 
 ## license
 
